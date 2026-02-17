@@ -7,7 +7,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 py-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-gray-900">
-            <span className="text-blue-600">Alz</span>News
+            Austin&apos;s <span className="text-blue-600">Alz</span>News
           </Link>
           <nav className="hidden gap-6 md:flex">
             {CATEGORIES.map((category) => (

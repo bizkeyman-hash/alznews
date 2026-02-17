@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AlzNews - 알츠하이머 치료제 뉴스",
+  title: "Austin's AlzNews - 알츠하이머 치료제 뉴스",
   description: "알츠하이머병 치료제 개발과 연구의 최신 소식을 한눈에 모아보세요",
 };
 
