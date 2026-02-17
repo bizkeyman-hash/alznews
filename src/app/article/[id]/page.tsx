@@ -1,7 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getArticleById } from "@/lib/aggregator";
+import { extractArticleContent } from "@/lib/extract";
 import { CATEGORY_NAME_MAP } from "@/lib/constants";
+import ImportanceBar from "@/components/news/ImportanceBar";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound();
   }
 
+  // Try to extract full content from original URL
+  const extracted = await extractArticleContent(article.url);
+  const bodyText = extracted || article.fullContent || article.description;
   const categoryName = CATEGORY_NAME_MAP[article.category] ?? article.category;
 
   return (
@@ -28,30 +32,41 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
       >
         &larr; 뉴스 목록으로
       </Link>
-      <span className="mb-4 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700">
-        {categoryName}
-      </span>
+
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700">
+          {categoryName}
+        </span>
+        {article.importance != null && (
+          <div className="w-32">
+            <ImportanceBar score={article.importance} />
+          </div>
+        )}
+      </div>
+
       <h1 className="mb-4 text-3xl font-bold text-gray-900">
         {article.title}
       </h1>
+
       <div className="mb-6 flex items-center gap-4 text-sm text-gray-500">
         <span>{article.source}</span>
         <time>{new Date(article.publishedAt).toLocaleDateString("ko-KR")}</time>
       </div>
-      {article.imageUrl && (
-        <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-lg">
-          <Image
-            src={article.imageUrl}
-            alt={article.title}
-            fill
-            className="object-cover"
-            unoptimized
-          />
-        </div>
+
+      <div className="prose prose-lg max-w-none text-gray-700">
+        {bodyText.split("\n\n").map((paragraph, i) => (
+          <p key={i} className="mb-4 leading-relaxed">
+            {paragraph}
+          </p>
+        ))}
+      </div>
+
+      {!extracted && (
+        <p className="mt-4 text-sm text-gray-400">
+          원문 전체를 가져올 수 없어 요약만 표시됩니다.
+        </p>
       )}
-      <p className="text-lg leading-relaxed text-gray-700">
-        {article.description}
-      </p>
+
       {article.url && article.url !== "#" && (
         <a
           href={article.url}

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Article } from "@/types/news";
 import { CATEGORY_NAME_MAP } from "@/lib/constants";
 import ImportanceBar from "./ImportanceBar";
@@ -35,12 +34,19 @@ export default function NewsList({ articles }: NewsListProps) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/article/${article.id}`}
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sm font-medium text-gray-900 hover:text-blue-600"
                   >
                     {article.title}
-                  </Link>
+                  </a>
+                  {article.summary && (
+                    <p className="mt-1 text-xs text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 inline-block">
+                      <span className="font-semibold mr-1">AI요약</span>{article.summary}
+                    </p>
+                  )}
                 </td>
                 <td className="hidden w-32 px-4 py-3 md:table-cell">
                   <ImportanceBar score={article.importance} />

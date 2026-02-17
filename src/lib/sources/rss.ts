@@ -30,8 +30,9 @@ export async function fetchRSS(): Promise<RawArticle[]> {
 
       for (const item of parsed.items ?? []) {
         const title = item.title?.trim() ?? "";
-        const description =
-          item.contentSnippet?.trim() || item.content?.trim() || "";
+        const snippet = item.contentSnippet?.trim() || "";
+        const htmlContent = item.content?.trim() || "";
+        const description = snippet || stripHtml(htmlContent);
 
         if (!title) continue;
         if (!feed.alzSpecific && !isAlzRelated(title, description)) continue;
@@ -39,7 +40,8 @@ export async function fetchRSS(): Promise<RawArticle[]> {
         items.push({
           title,
           description: description.slice(0, 500),
-          url: item.link ?? "",
+          fullContent: description.length > 500 ? description : undefined,
+          url: toBrowserUrl(item.link ?? ""),
           imageUrl: item.enclosure?.url || extractImageFromContent(item.content),
           source: feed.source,
           publishedAt: item.isoDate || item.pubDate || new Date().toISOString(),
@@ -60,6 +62,18 @@ export async function fetchRSS(): Promise<RawArticle[]> {
 
   setCache(CACHE_KEY, articles, CACHE_TTL);
   return articles;
+}
+
+/** Convert Google News RSS URL to browser-accessible URL */
+function toBrowserUrl(url: string): string {
+  return url.replace(
+    "https://news.google.com/rss/articles/",
+    "https://news.google.com/articles/"
+  );
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function extractImageFromContent(content?: string): string | undefined {

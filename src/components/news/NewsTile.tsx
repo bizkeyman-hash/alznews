@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Article } from "@/types/news";
 import { CATEGORY_NAME_MAP } from "@/lib/constants";
 import ImportanceBar from "./ImportanceBar";
@@ -11,8 +10,10 @@ export default function NewsTile({ article }: NewsTileProps) {
   const categoryName = CATEGORY_NAME_MAP[article.category] ?? article.category;
 
   return (
-    <Link
-      href={`/article/${article.id}`}
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
       className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="p-4">
@@ -29,6 +30,11 @@ export default function NewsTile({ article }: NewsTileProps) {
         <h3 className="mb-1 text-lg font-semibold text-gray-900 group-hover:text-blue-600">
           {article.title}
         </h3>
+        {article.summary && (
+          <p className="mb-2 text-sm text-blue-800 bg-blue-50 rounded px-2 py-1">
+            <span className="font-semibold mr-1">AI요약</span>{article.summary}
+          </p>
+        )}
         <p className="mb-3 line-clamp-2 text-sm text-gray-600">
           {article.description}
         </p>
@@ -37,6 +43,6 @@ export default function NewsTile({ article }: NewsTileProps) {
           <time>{new Date(article.publishedAt).toLocaleDateString("ko-KR")}</time>
         </div>
       </div>
-    </Link>
+    </a>
   );
 }

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pre-processing intermediate files
+data/raw-news.json
+data/enriched-news.json
