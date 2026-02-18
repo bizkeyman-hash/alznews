@@ -17,6 +17,12 @@ export function clearArticleStore(): void {
   articleStore.clear();
 }
 
+// Last aggregation stats (for logging from route handlers)
+let lastAggregationStats = { newCount: 0, totalCount: 0 };
+export function getAggregationStats() {
+  return lastAggregationStats;
+}
+
 function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, "").toLowerCase();
 }
@@ -179,13 +185,9 @@ export async function getArticles(
       articleStore.set(normalizeUrl(article.url), article);
     }
 
-    console.log(
-      `[Aggregator] ${scoredNew.length} new articles found, ${articleStore.size} total in store`
-    );
+    lastAggregationStats = { newCount: scoredNew.length, totalCount: articleStore.size };
   } else {
-    console.log(
-      `[Aggregator] No new articles, ${articleStore.size} total in store`
-    );
+    lastAggregationStats = { newCount: 0, totalCount: articleStore.size };
   }
 
   // Return all articles from store, sorted by date desc

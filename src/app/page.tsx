@@ -1,10 +1,14 @@
 import NewsGrid from "@/components/news/NewsGrid";
-import { getArticles } from "@/lib/aggregator";
+import { getArticles, getAggregationStats } from "@/lib/aggregator";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const articles = await getArticles();
+  const stats = getAggregationStats();
+  console.log(
+    `[Aggregator] ${stats.newCount} new articles, ${stats.totalCount} total in store → rendering ${articles.length}`
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getArticles } from "@/lib/aggregator";
+import { getArticles, getAggregationStats } from "@/lib/aggregator";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
     : undefined;
 
   const articles = await getArticles({ category, limit });
+  const stats = getAggregationStats();
+  console.log(
+    `[Aggregator] ${stats.newCount} new articles, ${stats.totalCount} total in store → returning ${articles.length}`
+  );
 
   return NextResponse.json({
     count: articles.length,
