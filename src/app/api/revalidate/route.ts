@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearCache } from "@/lib/cache";
-import { clearScoreCache } from "@/lib/scoring";
 
 export async function POST(request: NextRequest) {
   const secret = process.env.REVALIDATE_SECRET;
@@ -12,8 +11,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Only clear RSS source cache — score cache and article store are preserved
+  // so that only new articles are processed on the next fetch
   clearCache();
-  clearScoreCache();
+  console.log("[Revalidate] Source cache cleared, new articles will be fetched on next request");
 
   return NextResponse.json({ revalidated: true, timestamp: new Date().toISOString() });
 }

@@ -10,6 +10,17 @@ import { fetchNaver } from "@/lib/sources/naver";
 import { scoreArticles } from "@/lib/scoring";
 import { mockArticles } from "@/lib/mock-data";
 
+// URL → Article map (persists for process lifetime)
+const articleStore = new Map<string, Article>();
+
+export function clearArticleStore(): void {
+  articleStore.clear();
+}
+
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, "").toLowerCase();
+}
+
 function generateId(source: string, url: string): string {
   return crypto
     .createHash("md5")
@@ -129,15 +140,60 @@ export async function getArticles(
     return fallback;
   }
 
-  let articles = rawArticles.map(normalize);
-  articles = deduplicateByUrl(articles);
+  // Normalize and dedup within the fetched batch
+  let batchArticles = rawArticles.map(normalize);
+  batchArticles = deduplicateByUrl(batchArticles);
+
+  // Filter out articles already in the store
+  const newArticles = batchArticles.filter(
+    (a) => !articleStore.has(normalizeUrl(a.url))
+  );
+
+  if (newArticles.length > 0) {
+    // Sort new articles by date desc for title dedup (newest first)
+    newArticles.sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    );
+
+    // Dedup new articles by title, also comparing against existing store articles
+    const existingArticles = Array.from(articleStore.values());
+    const dedupedNew: Article[] = [];
+    for (const article of newArticles) {
+      const isDuplicateOfExisting = existingArticles.some(
+        (kept) => titleSimilarity(kept.title, article.title) >= 0.5
+      );
+      const isDuplicateOfNew = dedupedNew.some(
+        (kept) => titleSimilarity(kept.title, article.title) >= 0.5
+      );
+      if (!isDuplicateOfExisting && !isDuplicateOfNew) {
+        dedupedNew.push(article);
+      }
+    }
+
+    // Score only new articles
+    const scoredNew = await scoreArticles(dedupedNew);
+
+    // Add to store
+    for (const article of scoredNew) {
+      articleStore.set(normalizeUrl(article.url), article);
+    }
+
+    console.log(
+      `[Aggregator] ${scoredNew.length} new articles found, ${articleStore.size} total in store`
+    );
+  } else {
+    console.log(
+      `[Aggregator] No new articles, ${articleStore.size} total in store`
+    );
+  }
+
+  // Return all articles from store, sorted by date desc
+  let articles = Array.from(articleStore.values());
   articles.sort(
     (a, b) =>
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
-  articles = deduplicateByTitle(articles);
-
-  articles = await scoreArticles(articles);
 
   if (category) {
     articles = articles.filter((a) => a.category === category);
