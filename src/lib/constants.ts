@@ -65,6 +65,14 @@ export const RSS_FEEDS: RSSFeedConfig[] = [
   { url: "https://blog.alz.org/feed/", source: "ALZ Blog", alzSpecific: true },
 ];
 
+export const CATEGORY_COLORS: Record<string, string> = {
+  aribio: "bg-violet-950/60 text-violet-300 ring-1 ring-violet-500/20",
+  competition: "bg-blue-950/60 text-blue-300 ring-1 ring-blue-500/20",
+  research: "bg-emerald-950/60 text-emerald-300 ring-1 ring-emerald-500/20",
+  regulation: "bg-amber-950/60 text-amber-300 ring-1 ring-amber-500/20",
+  market: "bg-fuchsia-950/60 text-fuchsia-300 ring-1 ring-fuchsia-500/20",
+};
+
 export const ALZ_KEYWORDS = [
   "alzheimer",
   "dementia",

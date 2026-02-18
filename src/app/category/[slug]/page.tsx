@@ -21,13 +21,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold text-gray-900">
+      <h1 className="mb-6 text-3xl font-bold text-slate-100">
         {category.name} 뉴스
       </h1>
       {filtered.length > 0 ? (
         <NewsGrid articles={filtered} />
       ) : (
-        <p className="text-gray-500">해당 카테고리의 뉴스가 없습니다.</p>
+        <p className="text-slate-500">해당 카테고리의 뉴스가 없습니다.</p>
       )}
     </div>
   );

@@ -24,14 +24,15 @@ export default function NewsGrid({ articles }: NewsGridProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-gray-500">전체 {articles.length}건</p>
+      {/* Control bar */}
+      <div className="mb-4 flex items-center justify-between rounded-xl border border-[#2A2D45]/50 bg-[#181B2E]/60 p-3 backdrop-blur">
+        <p className="text-sm text-[#636789]">전체 {articles.length}건</p>
 
         <div className="flex items-center gap-2">
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-[#2A2D45] bg-[#181B2E] px-3 py-1.5 text-sm text-[#9094B0] transition-all hover:border-[#3D4163] hover:text-slate-200 active:scale-95 disabled:opacity-50"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +44,7 @@ export default function NewsGrid({ articles }: NewsGridProps) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={isRefreshing ? "animate-spin" : ""}
+            className={`transition-transform ${isRefreshing ? "animate-spin" : ""}`}
           >
             <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
             <path d="M21 3v5h-5" />
@@ -52,7 +53,7 @@ export default function NewsGrid({ articles }: NewsGridProps) {
         </button>
         <button
           onClick={() => setViewMode(viewMode === "tile" ? "list" : "tile")}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50"
+          className="flex items-center gap-1.5 rounded-lg border border-[#2A2D45] bg-[#181B2E] px-3 py-1.5 text-sm text-[#9094B0] transition-all hover:border-[#3D4163] hover:text-slate-200 active:scale-95"
         >
           {viewMode === "tile" ? (
             <>
