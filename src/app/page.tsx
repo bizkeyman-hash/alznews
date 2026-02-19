@@ -2,6 +2,7 @@ import NewsGrid from "@/components/news/NewsGrid";
 import { getArticles, getAggregationStats } from "@/lib/aggregator";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export default async function Home() {
   const articles = await getArticles();

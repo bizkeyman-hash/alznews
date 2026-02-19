@@ -6,6 +6,7 @@ import { fetchNewsAPI } from "@/lib/sources/newsapi";
 import { fetchClinicalTrials } from "@/lib/sources/clinicaltrials";
 import { fetchNaver } from "@/lib/sources/naver";
 import { scoreArticles } from "@/lib/scoring";
+import { summarizeArticles } from "@/lib/summarize";
 import { mockArticles } from "@/lib/mock-data";
 import {
   kvGetAllArticles,
@@ -123,6 +124,31 @@ export async function getArticles(
           articleStore.set(key, val);
         }
         console.log(`[Aggregator] Loaded ${kvArticles.size} articles from KV`);
+
+        // Backfill summaries for existing articles
+        const unsummarized = Array.from(kvArticles.entries()).filter(
+          ([, a]) => !a.summary
+        );
+        if (unsummarized.length > 0) {
+          console.log(`[Aggregator] Backfilling summaries for ${unsummarized.length} articles`);
+          try {
+            const summarized = await summarizeArticles(unsummarized.map(([, a]) => a));
+            const updates = new Map<string, Article>();
+            for (const article of summarized) {
+              if (article.summary) {
+                const key = normalizeUrl(article.url);
+                articleStore.set(key, article);
+                updates.set(key, article);
+              }
+            }
+            if (updates.size > 0) {
+              await kvSetArticles(updates);
+              console.log(`[Aggregator] Backfilled ${updates.size} summaries`);
+            }
+          } catch (err) {
+            console.error("[Aggregator] Summary backfill failed:", err);
+          }
+        }
       }
     } catch (err) {
       console.error("[Aggregator] KV load failed, continuing with empty store:", err);
@@ -185,12 +211,13 @@ export async function getArticles(
       }
     }
 
-    // Score only new articles
+    // Score and summarize new articles
     const scoredNew = await scoreArticles(dedupedNew);
+    const summarizedNew = await summarizeArticles(scoredNew);
 
     // Build a map of new articles to persist to KV
     const newKvEntries = new Map<string, Article>();
-    for (const article of scoredNew) {
+    for (const article of summarizedNew) {
       const key = normalizeUrl(article.url);
       articleStore.set(key, article);
       newKvEntries.set(key, article);
@@ -201,7 +228,7 @@ export async function getArticles(
       console.error("[Aggregator] KV write failed:", err)
     );
 
-    lastAggregationStats = { newCount: scoredNew.length, totalCount: articleStore.size };
+    lastAggregationStats = { newCount: summarizedNew.length, totalCount: articleStore.size };
   } else {
     lastAggregationStats = { newCount: 0, totalCount: articleStore.size };
   }
