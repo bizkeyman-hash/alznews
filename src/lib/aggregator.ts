@@ -1,6 +1,4 @@
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
 import { Article, RawArticle } from "@/types/news";
 import { categorize } from "@/lib/categorize";
 import { fetchRSS } from "@/lib/sources/rss";
@@ -9,12 +7,22 @@ import { fetchClinicalTrials } from "@/lib/sources/clinicaltrials";
 import { fetchNaver } from "@/lib/sources/naver";
 import { scoreArticles } from "@/lib/scoring";
 import { mockArticles } from "@/lib/mock-data";
+import {
+  kvGetAllArticles,
+  kvSetArticles,
+  kvClearArticles,
+} from "@/lib/kv";
 
-// URL → Article map (persists for process lifetime)
+// In-memory cache (tier 1) — survives within a warm instance
 const articleStore = new Map<string, Article>();
 
-export function clearArticleStore(): void {
+// Whether we've loaded from KV on this instance's first request
+let kvLoaded = false;
+
+export async function clearArticleStore(): Promise<void> {
   articleStore.clear();
+  kvLoaded = false;
+  await kvClearArticles();
 }
 
 // Last aggregation stats (for logging from route handlers)
@@ -106,20 +114,20 @@ export async function getArticles(
 ): Promise<Article[]> {
   const { category, limit } = options;
 
-  // Pre-processed news.json takes priority over live fetch
-  try {
-    const newsJsonPath = path.join(process.cwd(), "data", "news.json");
-    if (fs.existsSync(newsJsonPath)) {
-      const data = fs.readFileSync(newsJsonPath, "utf-8");
-      let articles: Article[] = JSON.parse(data);
-      if (articles.length > 0) {
-        if (category) articles = articles.filter((a) => a.category === category);
-        if (limit) articles = articles.slice(0, limit);
-        return articles;
+  // Tier 1: Cold start — load from KV into in-memory cache
+  if (!kvLoaded) {
+    try {
+      const kvArticles = await kvGetAllArticles();
+      if (kvArticles.size > 0) {
+        for (const [key, val] of kvArticles) {
+          articleStore.set(key, val);
+        }
+        console.log(`[Aggregator] Loaded ${kvArticles.size} articles from KV`);
       }
+    } catch (err) {
+      console.error("[Aggregator] KV load failed, continuing with empty store:", err);
     }
-  } catch {
-    // Fall through to live fetch
+    kvLoaded = true;
   }
 
   const results = await Promise.allSettled([
@@ -138,8 +146,8 @@ export async function getArticles(
     }
   }
 
-  if (rawArticles.length === 0) {
-    console.warn("[Aggregator] All sources failed, using mock data");
+  if (rawArticles.length === 0 && articleStore.size === 0) {
+    console.warn("[Aggregator] All sources failed and store empty, using mock data");
     let fallback = [...mockArticles];
     if (category) fallback = fallback.filter((a) => a.category === category);
     if (limit) fallback = fallback.slice(0, limit);
@@ -180,10 +188,18 @@ export async function getArticles(
     // Score only new articles
     const scoredNew = await scoreArticles(dedupedNew);
 
-    // Add to store
+    // Build a map of new articles to persist to KV
+    const newKvEntries = new Map<string, Article>();
     for (const article of scoredNew) {
-      articleStore.set(normalizeUrl(article.url), article);
+      const key = normalizeUrl(article.url);
+      articleStore.set(key, article);
+      newKvEntries.set(key, article);
     }
+
+    // Persist new articles to KV (non-blocking — don't await in critical path)
+    kvSetArticles(newKvEntries).catch((err) =>
+      console.error("[Aggregator] KV write failed:", err)
+    );
 
     lastAggregationStats = { newCount: scoredNew.length, totalCount: articleStore.size };
   } else {
@@ -208,7 +224,6 @@ export async function getArticles(
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  // getArticles already checks news.json first
   const articles = await getArticles();
   return articles.find((a) => a.id === id) ?? null;
 }
