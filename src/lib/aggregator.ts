@@ -37,7 +37,7 @@ function normalizeUrl(url: string): string {
 }
 
 const BLOCKED_DOMAINS = ["msn.com"];
-const BLOCKED_SOURCES = ["MSN"];
+const BLOCKED_SOURCES = ["MSN", "프리스탁뉴스"];
 
 function isBlocked(url: string, title: string): boolean {
   // Check URL domain
