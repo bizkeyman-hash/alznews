@@ -36,6 +36,27 @@ function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, "").toLowerCase();
 }
 
+const BLOCKED_DOMAINS = ["msn.com"];
+const BLOCKED_SOURCES = ["MSN"];
+
+function isBlocked(url: string, title: string): boolean {
+  // Check URL domain
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (BLOCKED_DOMAINS.some((d) => hostname === d || hostname.endsWith(`.${d}`))) {
+      return true;
+    }
+  } catch { /* ignore */ }
+
+  // Check title suffix (Google News RSS format: "Title - Source")
+  const match = title.match(/\s+-\s+([^-]+)$/);
+  if (match && BLOCKED_SOURCES.some((s) => match[1].trim().toLowerCase() === s.toLowerCase())) {
+    return true;
+  }
+
+  return false;
+}
+
 function generateId(source: string, url: string): string {
   return crypto
     .createHash("md5")
@@ -121,6 +142,7 @@ export async function getArticles(
       const kvArticles = await kvGetAllArticles();
       if (kvArticles.size > 0) {
         for (const [key, val] of kvArticles) {
+          if (isBlocked(val.url, val.title)) continue;
           articleStore.set(key, val);
         }
         console.log(`[Aggregator] Loaded ${kvArticles.size} articles from KV`);
@@ -180,8 +202,9 @@ export async function getArticles(
     return fallback;
   }
 
-  // Normalize and dedup within the fetched batch
+  // Normalize, filter blocked domains, and dedup within the fetched batch
   let batchArticles = rawArticles.map(normalize);
+  batchArticles = batchArticles.filter((a) => !isBlocked(a.url, a.title));
   batchArticles = deduplicateByUrl(batchArticles);
 
   // Filter out articles already in the store
