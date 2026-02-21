@@ -32,8 +32,8 @@ async function searchNaver(query: string): Promise<RawArticle[]> {
 
   const res = await fetch(url.toString(), {
     headers: {
-      "X-Naver-Client-Id": CLIENT_ID!,
-      "X-Naver-Client-Secret": CLIENT_SECRET!,
+      "X-Naver-Client-Id": CLIENT_ID ?? "",
+      "X-Naver-Client-Secret": CLIENT_SECRET ?? "",
     },
     signal: AbortSignal.timeout(10_000),
   });

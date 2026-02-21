@@ -41,8 +41,8 @@ ${articlesText}`,
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+  const first = response.content[0];
+  const text = first?.type === "text" ? first.text : "";
   const summaryMap = new Map<string, string>();
 
   for (const line of text.split("\n")) {

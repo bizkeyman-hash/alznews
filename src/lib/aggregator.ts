@@ -112,20 +112,6 @@ function titleSimilarity(a: string, b: string): number {
   return intersection / smaller;
 }
 
-function deduplicateByTitle(articles: Article[]): Article[] {
-  // articles must be sorted by date desc (newest first)
-  const result: Article[] = [];
-  for (const article of articles) {
-    const isDuplicate = result.some(
-      (kept) => titleSimilarity(kept.title, article.title) >= 0.5
-    );
-    if (!isDuplicate) {
-      result.push(article);
-    }
-  }
-  return result;
-}
-
 interface GetArticlesOptions {
   category?: string;
   limit?: number;
@@ -147,8 +133,8 @@ export async function getArticles(
         }
         console.log(`[Aggregator] Loaded ${kvArticles.size} articles from KV`);
 
-        // Backfill summaries for existing articles
-        const unsummarized = Array.from(kvArticles.entries()).filter(
+        // Backfill summaries for existing non-blocked articles
+        const unsummarized = Array.from(articleStore.entries()).filter(
           ([, a]) => !a.summary
         );
         if (unsummarized.length > 0) {

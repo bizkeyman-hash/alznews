@@ -58,7 +58,7 @@ const SCORING_RULES: [string[], number][] = [
 ];
 
 function computeScore(title: string, description: string): number {
-  const text = `${title} ${description.slice(0, 200)}`.toLowerCase();
+  const text = `${title} ${(description || "").slice(0, 200)}`.toLowerCase();
 
   let maxScore = 1;
 
