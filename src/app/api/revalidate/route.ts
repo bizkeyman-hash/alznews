@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearCache } from "@/lib/cache";
+import { getArticles, getAggregationStats } from "@/lib/aggregator";
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const secret = process.env.REVALIDATE_SECRET;
@@ -11,10 +14,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only clear RSS source cache — score cache and article store are preserved
-  // so that only new articles are processed on the next fetch
+  // Clear RSS source cache then fetch fresh articles on THIS instance
   clearCache();
-  console.log("[Revalidate] Source cache cleared, new articles will be fetched on next request");
+  await getArticles();
+  const stats = getAggregationStats();
+  console.log(
+    `[Revalidate] Fetched ${stats.newCount} new articles, ${stats.totalCount} total`
+  );
 
-  return NextResponse.json({ revalidated: true, timestamp: new Date().toISOString() });
+  return NextResponse.json({
+    revalidated: true,
+    newCount: stats.newCount,
+    totalCount: stats.totalCount,
+    timestamp: new Date().toISOString(),
+  });
 }
