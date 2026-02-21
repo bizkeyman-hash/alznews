@@ -1,7 +1,38 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Article } from "@/types/news";
+import { extractArticleContent } from "@/lib/extract";
 
 const BATCH_SIZE = 10;
+
+async function enrichWithContent(
+  articles: Article[]
+): Promise<Map<string, string>> {
+  const contentMap = new Map<string, string>();
+
+  // Only extract for articles with short descriptions
+  const needsContent = articles.filter(
+    (a) => !a.description || a.description.length < 150
+  );
+
+  if (needsContent.length === 0) return contentMap;
+
+  const results = await Promise.allSettled(
+    needsContent.map((a) => extractArticleContent(a.url))
+  );
+
+  for (let i = 0; i < needsContent.length; i++) {
+    const result = results[i];
+    if (result.status === "fulfilled" && result.value) {
+      contentMap.set(needsContent[i].id, result.value.slice(0, 1000));
+    }
+  }
+
+  console.log(
+    `[Summarize] Enriched ${contentMap.size}/${needsContent.length} articles with content`
+  );
+
+  return contentMap;
+}
 
 function getClient(): Anthropic | null {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -14,13 +45,17 @@ function getClient(): Anthropic | null {
 
 async function summarizeBatch(
   client: Anthropic,
-  articles: Article[]
+  articles: Article[],
+  contentMap: Map<string, string>
 ): Promise<Map<string, string>> {
   const articlesText = articles
-    .map(
-      (a, i) =>
-        `[${i + 1}] ${a.title}\n${a.description?.slice(0, 200) || ""}`
-    )
+    .map((a, i) => {
+      const enriched = contentMap.get(a.id);
+      const body = enriched
+        ? enriched.slice(0, 500)
+        : a.description?.slice(0, 200) || "";
+      return `[${i + 1}] ${a.title}\n${body}`;
+    })
     .join("\n\n");
 
   const response = await client.messages.create({
@@ -68,6 +103,9 @@ export async function summarizeArticles(
   const client = getClient();
   if (!client) return articles;
 
+  // Enrich articles with extracted content before summarizing
+  const contentMap = await enrichWithContent(needsSummary);
+
   // Split into batches of BATCH_SIZE
   const batches: Article[][] = [];
   for (let i = 0; i < needsSummary.length; i += BATCH_SIZE) {
@@ -78,7 +116,7 @@ export async function summarizeArticles(
   const allSummaries = new Map<string, string>();
   try {
     const results = await Promise.allSettled(
-      batches.map((batch) => summarizeBatch(client, batch))
+      batches.map((batch) => summarizeBatch(client, batch, contentMap))
     );
 
     for (const result of results) {
