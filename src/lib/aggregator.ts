@@ -180,6 +180,8 @@ export async function getArticles(
     }
   }
 
+  console.log(`[Aggregator] Fetched ${rawArticles.length} raw articles, store has ${articleStore.size}`);
+
   if (rawArticles.length === 0 && articleStore.size === 0) {
     console.warn("[Aggregator] All sources failed and store empty, using mock data");
     let fallback = [...mockArticles];
@@ -198,6 +200,11 @@ export async function getArticles(
     (a) => !articleStore.has(normalizeUrl(a.url))
   );
 
+  console.log(`[Aggregator] After dedup: ${batchArticles.length} batch, ${newArticles.length} new`);
+  if (newArticles.length > 0 && newArticles.length <= 20) {
+    console.log(`[Aggregator] New articles:`, newArticles.map((a) => `${a.publishedAt} | ${a.title.slice(0, 50)}`));
+  }
+
   if (newArticles.length > 0) {
     // Sort new articles by date desc for title dedup (newest first)
     newArticles.sort(
@@ -210,15 +217,17 @@ export async function getArticles(
     const dedupedNew: Article[] = [];
     for (const article of newArticles) {
       const isDuplicateOfExisting = existingArticles.some(
-        (kept) => titleSimilarity(kept.title, article.title) >= 0.5
+        (kept) => titleSimilarity(kept.title, article.title) >= 0.7
       );
       const isDuplicateOfNew = dedupedNew.some(
-        (kept) => titleSimilarity(kept.title, article.title) >= 0.5
+        (kept) => titleSimilarity(kept.title, article.title) >= 0.7
       );
       if (!isDuplicateOfExisting && !isDuplicateOfNew) {
         dedupedNew.push(article);
       }
     }
+
+    console.log(`[Aggregator] After title dedup: ${dedupedNew.length} articles (from ${newArticles.length})`);
 
     // Score and summarize new articles
     const scoredNew = await scoreArticles(dedupedNew);
