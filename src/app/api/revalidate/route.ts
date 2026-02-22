@@ -4,7 +4,7 @@ import { getArticles, getAggregationStats } from "@/lib/aggregator";
 
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
+async function revalidate(request: NextRequest) {
   const secret = process.env.REVALIDATE_SECRET;
 
   // If an Authorization header is present, validate it (external cron).
@@ -28,4 +28,14 @@ export async function POST(request: NextRequest) {
     totalCount: stats.totalCount,
     timestamp: new Date().toISOString(),
   });
+}
+
+// POST: browser refresh button / external cron
+export async function POST(request: NextRequest) {
+  return revalidate(request);
+}
+
+// GET: Vercel Cron
+export async function GET(request: NextRequest) {
+  return revalidate(request);
 }
