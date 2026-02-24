@@ -12,6 +12,7 @@ import {
   kvGetAllArticles,
   kvSetArticles,
   kvClearArticles,
+  kvDeleteArticle,
 } from "@/lib/kv";
 
 // In-memory cache (tier 1) — survives within a warm instance
@@ -115,12 +116,14 @@ function titleSimilarity(a: string, b: string): number {
 interface GetArticlesOptions {
   category?: string;
   limit?: number;
+  offset?: number;
+  favoriteIds?: Set<string>;
 }
 
 export async function getArticles(
   options: GetArticlesOptions = {}
-): Promise<Article[]> {
-  const { category, limit } = options;
+): Promise<{ articles: Article[]; total: number }> {
+  const { category, limit, offset = 0, favoriteIds } = options;
 
   // Tier 1: Cold start — load from KV into in-memory cache
   if (!kvLoaded) {
@@ -186,8 +189,9 @@ export async function getArticles(
     console.warn("[Aggregator] All sources failed and store empty, using mock data");
     let fallback = [...mockArticles];
     if (category) fallback = fallback.filter((a) => a.category === category);
-    if (limit) fallback = fallback.slice(0, limit);
-    return fallback;
+    const total = fallback.length;
+    fallback = fallback.slice(offset, limit ? offset + limit : undefined);
+    return { articles: fallback, total };
   }
 
   // Normalize, filter blocked domains, and dedup within the fetched batch
@@ -258,17 +262,61 @@ export async function getArticles(
       new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
   );
 
+  if (favoriteIds && favoriteIds.size > 0) {
+    articles = articles.filter((a) => favoriteIds.has(a.id));
+  }
   if (category) {
     articles = articles.filter((a) => a.category === category);
   }
-  if (limit) {
-    articles = articles.slice(0, limit);
-  }
 
-  return articles;
+  const total = articles.length;
+
+  articles = articles.slice(offset, limit ? offset + limit : undefined);
+
+  return { articles, total };
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  const articles = await getArticles();
+  const { articles } = await getArticles();
   return articles.find((a) => a.id === id) ?? null;
+}
+
+export async function deleteArticleById(id: string): Promise<boolean> {
+  // Ensure store is loaded
+  if (!kvLoaded) await getArticles();
+
+  for (const [key, article] of articleStore) {
+    if (article.id === id) {
+      articleStore.delete(key);
+      await kvDeleteArticle(key);
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function cleanupArticleStore(
+  favoriteIds: Set<string>,
+  cutoffDays = 30
+): Promise<number> {
+  // Ensure store is loaded
+  if (!kvLoaded) await getArticles();
+
+  const cutoff = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
+  const toDelete: string[] = [];
+
+  for (const [key, article] of articleStore) {
+    if (favoriteIds.has(article.id)) continue;
+    if (new Date(article.publishedAt).getTime() < cutoff) {
+      toDelete.push(key);
+    }
+  }
+
+  for (const key of toDelete) {
+    articleStore.delete(key);
+    await kvDeleteArticle(key);
+  }
+
+  console.log(`[Cleanup] Removed ${toDelete.length} articles older than ${cutoffDays} days`);
+  return toDelete.length;
 }

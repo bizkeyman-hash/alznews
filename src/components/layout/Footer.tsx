@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, FAVORITES_NAV } from "@/lib/constants";
 
 export default function Footer() {
   return (
@@ -32,6 +32,13 @@ export default function Footer() {
                 {category.name}
               </Link>
             ))}
+            <Link
+              href={`/category/${FAVORITES_NAV.slug}`}
+              className="text-sm text-rose-400/70 transition-colors hover:text-rose-400"
+            >
+              <span className="mr-1">♥</span>
+              {FAVORITES_NAV.name}
+            </Link>
           </div>
         </div>
         <p className="mt-8 text-center text-xs text-[#4A4E6A]">

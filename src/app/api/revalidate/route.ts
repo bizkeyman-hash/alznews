@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearCache } from "@/lib/cache";
-import { getArticles, getAggregationStats } from "@/lib/aggregator";
+import { getArticles, getAggregationStats, cleanupArticleStore } from "@/lib/aggregator";
+import { kvGetFavorites } from "@/lib/kv";
 
 export const maxDuration = 60;
 
@@ -22,10 +23,15 @@ async function revalidate(request: NextRequest) {
     `[Revalidate] Fetched ${stats.newCount} new articles, ${stats.totalCount} total`
   );
 
+  // Cleanup articles older than 30 days (exclude favorites)
+  const favoriteIds = await kvGetFavorites();
+  const removed = await cleanupArticleStore(favoriteIds);
+
   return NextResponse.json({
     revalidated: true,
     newCount: stats.newCount,
     totalCount: stats.totalCount,
+    cleanedUp: removed,
     timestamp: new Date().toISOString(),
   });
 }

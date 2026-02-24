@@ -28,3 +28,26 @@ export async function kvSetArticles(
 export async function kvClearArticles(): Promise<void> {
   await kv.del(ARTICLES_KEY);
 }
+
+// ── Favorites (Redis set) ──
+
+const FAVORITES_KEY = "favorites";
+
+export async function kvAddFavorite(articleId: string): Promise<void> {
+  await kv.sadd(FAVORITES_KEY, articleId);
+}
+
+export async function kvRemoveFavorite(articleId: string): Promise<void> {
+  await kv.srem(FAVORITES_KEY, articleId);
+}
+
+export async function kvGetFavorites(): Promise<Set<string>> {
+  const members = await kv.smembers(FAVORITES_KEY);
+  return new Set(members ?? []);
+}
+
+// ── Single article deletion ──
+
+export async function kvDeleteArticle(normalizedUrl: string): Promise<void> {
+  await kv.hdel(ARTICLES_KEY, normalizedUrl);
+}

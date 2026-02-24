@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, FAVORITES_NAV } from "@/lib/constants";
 
 export default function Header() {
   return (
@@ -23,6 +23,13 @@ export default function Header() {
                 {category.name}
               </Link>
             ))}
+            <Link
+              href={`/category/${FAVORITES_NAV.slug}`}
+              className="relative text-sm text-rose-400 transition-colors hover:text-rose-300 after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 after:bg-gradient-to-r after:from-rose-400 after:to-pink-400 after:transition-all after:duration-300 hover:after:w-full"
+            >
+              <span className="mr-1">♥</span>
+              {FAVORITES_NAV.name}
+            </Link>
           </nav>
         </div>
       </div>
